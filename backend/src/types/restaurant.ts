@@ -5,4 +5,6 @@ export default interface Restaurant {
     budget: number
     start_construction: string
     finish_construction: string
+    created_at: string
+    updated_at: string
 }
