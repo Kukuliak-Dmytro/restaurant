@@ -8,8 +8,11 @@ export function getStatusFromError(error: any): number {
     if (error?.code === 'MISSING_ID' || error?.code === 'MISSING_DATA') {
         return 400; // Bad Request
     }
-    if (error?.code === 'NOT_FOUND') {
+    if (error?.code === 'NOT_FOUND' || error?.code === 'PAGE_NOT_FOUND') {
         return 404; // Not Found
+    }
+    if (error?.code === 'INVALID_PAGINATION' || error?.code === 'INVALID_DATA') {
+        return 400; // Bad Request
     }
     
     // Supabase database error codes

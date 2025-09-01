@@ -13,7 +13,7 @@ export function paginate<T>(data: T[], page: number, limit: number): Pagination<
     return {
         page,
         limit,
-        data: paginatedData,
-        total: data.length
+        total: data.length,
+        data: paginatedData
     }
 }
