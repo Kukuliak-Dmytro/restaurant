@@ -1,4 +1,4 @@
-import { fireEmployee, updateEmployee, createEmployee, getEmployees, getEmployeeById     } from "../services/employee";
+import { fireEmployee, updateEmployee, createEmployee, getEmployees, getEmployeeById, getEmployeeByUserId, upsertEmployeeByUserId } from "../services/employee";
 import type Employee from "../types/employee";
 
 export async function getEmployeesOperation() {
@@ -27,6 +27,18 @@ export async function updateEmployeeOperation(id: number, employee: Partial<Empl
 
 export async function fireEmployeeOperation(id: number) {
     const { data, error } = await fireEmployee(id)
+    if (error) throw error
+    return data
+}
+
+export async function getEmployeeByUserIdOperation(userId: string) {
+    const { data, error } = await getEmployeeByUserId(userId)
+    if (error) throw error
+    return data
+}
+
+export async function upsertEmployeeByUserIdOperation(userId: string, employee: Partial<Employee>) {
+    const { data, error } = await upsertEmployeeByUserId(userId, employee)
     if (error) throw error
     return data
 }

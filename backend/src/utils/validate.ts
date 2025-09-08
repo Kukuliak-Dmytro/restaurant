@@ -3,7 +3,8 @@ import dotenv from "dotenv";
 const requiredEns=[
     "SUPABASE_URL",
     "PUBLISH_KEY",
-    "SECRET_KEY"
+    "SECRET_KEY",
+    "JWT_SECRET"
 ]
 
 dotenv.config();

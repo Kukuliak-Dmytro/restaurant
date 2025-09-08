@@ -107,3 +107,69 @@ export async function fireEmployee(id: number): Promise<{data: Employee | null, 
         return { data: null, error: { message: 'Database connection failed', context: 'fireEmployee operation failed' } }
     }
 }
+
+export async function getEmployeeByUserId(userId: string): Promise<{data: Employee | null, error: any}> {
+    try {
+        if (!userId) {
+            return { data: null, error: { message: 'Valid user ID is required', code: 'MISSING_USER_ID' } }
+        }
+        
+        const { data, error } = await supabaseClient.from('employees').select('*').eq('id', userId).single()
+        if (error) {
+            if (error.code === 'PGRST116') { // Not found
+                return { data: null, error: null }
+            }
+            const enhancedError = {
+                ...error,
+                context: `Failed to fetch employee with user ID: ${userId}`,
+                operation: 'getEmployeeByUserId',
+                resourceId: userId
+            };
+            return {data: null, error: enhancedError}
+        }
+        return {data: data || null, error: null}
+    } catch (err) {
+        return { data: null, error: { message: 'Database connection failed', context: 'getEmployeeByUserId operation failed' } }
+    }
+}
+
+export async function upsertEmployeeByUserId(userId: string, employee: Partial<Employee>): Promise<{data: Employee | null, error: any}> {
+    try {
+        if (!userId) {
+            return { data: null, error: { message: 'Valid user ID is required', code: 'MISSING_USER_ID' } }
+        }
+        
+        if (!employee || Object.keys(employee).length === 0) {
+            return { data: null, error: { message: 'Employee data is required', code: 'MISSING_DATA' } }
+        }
+        
+        // Add updated_at timestamp
+        const employeeData = {
+            ...employee,
+            updated_at: new Date().toISOString()
+        }
+        
+        const { data, error } = await supabaseClient
+            .from('employees')
+            .upsert({ 
+                id: userId,
+                ...employeeData 
+            })
+            .select()
+            .single()
+            
+        if (error) {
+            const enhancedError = {
+                ...error,
+                context: `Failed to upsert employee with user ID: ${userId}`,
+                operation: 'upsertEmployeeByUserId',
+                resourceId: userId,
+                inputData: employeeData
+            };
+            return {data: null, error: enhancedError}
+        }
+        return {data: data || null, error: null}
+    } catch (err) {
+        return { data: null, error: { message: 'Database connection failed', context: 'upsertEmployeeByUserId operation failed' } }
+    }
+}

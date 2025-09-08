@@ -1,9 +1,10 @@
-import { getEmployeesOperation, getEmployeeByIdOperation, createEmployeeOperation, updateEmployeeOperation, fireEmployeeOperation } from "../operations/employee";
+import { getEmployeesOperation, getEmployeeByIdOperation, createEmployeeOperation, updateEmployeeOperation, fireEmployeeOperation, getEmployeeByUserIdOperation, upsertEmployeeByUserIdOperation } from "../operations/employee";
 import { getStatusFromError, formatErrorResponse, isProduction } from "../utils/errorUtils";
 import type { Pagination } from "../utils/pagination";
 import { paginate } from "../utils/pagination";
 import { Request, Response } from "express";
 import type Employee from "../types/employee";
+import { extractUserId } from "../utils/jwtAuth";
 
 const employeeController = {
     getEmployees: async (req: Request, res: Response): Promise<void> => {
@@ -145,6 +146,70 @@ const employeeController = {
                 res.status(404).json({ 
                     error: 'Employee not found',
                     code: 'NOT_FOUND'
+                });
+                return;
+            }
+
+            res.json(employee)
+        } catch (error: any) {
+            const statusCode = getStatusFromError(error);
+            const errorResponse = formatErrorResponse(error, isProduction());
+            
+            res.status(statusCode).json(errorResponse);
+        }
+    },
+
+    getProfile: async (req: Request, res: Response): Promise<void> => {
+        try {
+            const userId = extractUserId(req);
+            
+            if (!userId) {
+                res.status(401).json({ 
+                    error: 'User ID not found in token',
+                    code: 'MISSING_USER_ID'
+                });
+                return;
+            }
+
+            const employee = await getEmployeeByUserIdOperation(userId)
+            
+            // Return null if no employee profile exists (not an error)
+            res.json(employee)
+        } catch (error: any) {
+            const statusCode = getStatusFromError(error);
+            const errorResponse = formatErrorResponse(error, isProduction());
+            
+            res.status(statusCode).json(errorResponse);
+        }
+    },
+
+    updateProfile: async (req: Request, res: Response): Promise<void> => {
+        try {
+            const userId = extractUserId(req);
+            const employeeData = req.body;
+            
+            if (!userId) {
+                res.status(401).json({ 
+                    error: 'User ID not found in token',
+                    code: 'MISSING_USER_ID'
+                });
+                return;
+            }
+
+            if (!employeeData || Object.keys(employeeData).length === 0) {
+                res.status(400).json({ 
+                    error: 'Profile data is required',
+                    code: 'MISSING_DATA'
+                });
+                return;
+            }
+
+            const employee = await upsertEmployeeByUserIdOperation(userId, employeeData)
+            
+            if (!employee) {
+                res.status(500).json({ 
+                    error: 'Failed to update profile',
+                    code: 'UPDATE_FAILED'
                 });
                 return;
             }

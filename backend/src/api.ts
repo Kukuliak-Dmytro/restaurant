@@ -3,7 +3,7 @@ dotenv.config();
 
 import express from "express";  
 import cors from "cors";
-import validate from "./utils/validate";
+import LoadEnvs from "./utils/validate";
 import supabase from "./utils/supabase";
 import restaurantRoutes from "./routes/restaurant";
 import roleRoutes from "./routes/role";
@@ -12,7 +12,7 @@ const app = express();
 
 app.use(cors());
 app.use(express.json());
-validate();
+LoadEnvs();
 
 app.use('/api', restaurantRoutes)
 app.use('/api', roleRoutes)
