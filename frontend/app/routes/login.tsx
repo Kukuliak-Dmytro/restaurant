@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Link, useNavigate } from "react-router";
 import { supabase } from "../lib/supabase";
 
@@ -7,7 +7,38 @@ const Login = () => {
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+  const [isCheckingAuth, setIsCheckingAuth] = useState(true);
   const navigate = useNavigate();
+
+  // Check if user is already logged in
+  useEffect(() => {
+    const checkAuth = async () => {
+      try {
+        console.log("Login page - Checking authentication...");
+        const { data: { session }, error } = await supabase.auth.getSession();
+        
+        console.log("Login page - Session check result:", {
+          session: session ? "✓ Present" : "✗ None",
+          error: error ? `✗ ${error.message}` : "✓ None",
+          user: session?.user ? session.user.email : "None"
+        });
+        
+        if (session) {
+          console.log("User already logged in, redirecting to home");
+          navigate("/");
+          return;
+        }
+        
+        console.log("No active session, showing login form");
+      } catch (err) {
+        console.error("Error checking auth:", err);
+      } finally {
+        setIsCheckingAuth(false);
+      }
+    };
+
+    checkAuth();
+  }, [navigate]);
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -32,6 +63,17 @@ const Login = () => {
       setLoading(false);
     }
   };
+
+  // Show loading while checking authentication
+  if (isCheckingAuth) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gray-50">
+        <div className="text-center">
+          <div className="text-lg">Checking authentication...</div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-gray-50 py-12 px-4 sm:px-6 lg:px-8">

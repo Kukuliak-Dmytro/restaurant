@@ -8,6 +8,8 @@ import supabase from "./utils/supabase";
 import restaurantRoutes from "./routes/restaurant";
 import roleRoutes from "./routes/role";
 import employeeRoutes from "./routes/employee";
+import scheduleRoutes from "./routes/schedule";
+import shiftRoutes from "./routes/shift";
 const app = express();
 
 app.use(cors());
@@ -17,6 +19,8 @@ LoadEnvs();
 app.use('/api', restaurantRoutes)
 app.use('/api', roleRoutes)
 app.use('/api', employeeRoutes)
+app.use('/api/schedule', scheduleRoutes)
+app.use('/api/shifts', shiftRoutes)
 
 app.listen(process.env.PORT || 3000, () => {
 

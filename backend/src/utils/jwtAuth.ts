@@ -1,7 +1,8 @@
-import jwt from 'jsonwebtoken';
 import { Request, Response, NextFunction } from 'express';
+import { createClient } from '@supabase/supabase-js';
 
-const JWT_SECRET = process.env.JWT_SECRET||'';
+const supabaseUrl = process.env.SUPABASE_URL || '';
+const supabasePublishKey = process.env.PUBLISH_KEY || '';
 
 // Extend Request interface to include user
 declare global {
@@ -16,7 +17,7 @@ declare global {
   }
 }
 
-export const authenticateToken = (req: Request, res: Response, next: NextFunction): void => {
+export const authenticateToken = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
   const authHeader = req.headers['authorization'];
   const token = authHeader && authHeader.split(' ')[1]; // Bearer TOKEN
 
@@ -29,19 +30,37 @@ export const authenticateToken = (req: Request, res: Response, next: NextFunctio
   }
 
   try {
-    // Verify the JWT token
-    const decoded = jwt.verify(token, JWT_SECRET) as any;
+    // Create Supabase client with publish key and user's JWT token
+    const supabase = createClient(supabaseUrl, supabasePublishKey, {
+      global: {
+        headers: {
+          Authorization: `Bearer ${token}`
+        }
+      }
+    });
+
+    // Use Supabase to verify the JWT token
+    const { data: { user }, error } = await supabase.auth.getUser();
     
-    // Extract user information from the token
+    if (error || !user) {
+      console.error('Supabase auth error:', error);
+      res.status(403).json({ 
+        error: 'Invalid or expired token',
+        code: 'INVALID_TOKEN'
+      });
+      return;
+    }
+    
+    // Extract user information
     req.user = {
-      sub: decoded.sub, // User ID from Supabase
-      email: decoded.email,
-      ...decoded
+      sub: user.id,
+      email: user.email,
+      ...user
     };
     
     next();
   } catch (error) {
-    console.error('JWT verification error:', error);
+    console.error('Token verification error:', error);
     res.status(403).json({ 
       error: 'Invalid or expired token',
       code: 'INVALID_TOKEN'
