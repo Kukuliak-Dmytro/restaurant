@@ -10,6 +10,8 @@ import roleRoutes from "./routes/role";
 import employeeRoutes from "./routes/employee";
 import scheduleRoutes from "./routes/schedule";
 import shiftRoutes from "./routes/shift";
+import ingredientRoutes from "./routes/ingredients";
+import dishRoutes from "./routes/dishes";
 const app = express();
 
 app.use(cors());
@@ -21,6 +23,8 @@ app.use('/api', roleRoutes)
 app.use('/api', employeeRoutes)
 app.use('/api/schedule', scheduleRoutes)
 app.use('/api/shifts', shiftRoutes)
+app.use('/api', ingredientRoutes)
+app.use('/api', dishRoutes)
 
 app.listen(process.env.PORT || 3000, () => {
 

@@ -7,12 +7,13 @@ const shiftService = new ShiftService();
 export const createShift = async (req: Request, res: Response): Promise<void> => {
     try {
         const userId = extractUserId(req);
+        const token = req.headers['authorization']?.split(' ')[1]; // Extract Bearer token
         const shiftData = {
             ...req.body,
             admin_id: userId
         };
 
-        const result = await shiftService.createShift(shiftData);
+        const result = await shiftService.createShift(shiftData, token);
 
         if (result.success) {
             res.status(201).json(result);

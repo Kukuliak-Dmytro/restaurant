@@ -5,15 +5,25 @@ interface EmployeeCardProps {
   onRemove: () => void;
   canEdit: boolean;
   isSaving: boolean;
+  isCurrentUser?: boolean;
 }
 
-export default function EmployeeCard({ employee, onRemove, canEdit, isSaving }: EmployeeCardProps) {
+export default function EmployeeCard({ employee, onRemove, canEdit, isSaving, isCurrentUser = false }: EmployeeCardProps) {
   return (
-    <div className="group relative bg-blue-50 border border-blue-200 rounded-md p-2 hover:bg-blue-100 transition-colors">
-      <div className="text-xs font-medium text-blue-900 truncate">
+    <div className={`group relative rounded-md p-2 transition-colors ${
+      isCurrentUser 
+        ? 'bg-green-50 border border-green-300 hover:bg-green-100' 
+        : 'bg-blue-50 border border-blue-200 hover:bg-blue-100'
+    }`}>
+      <div className={`text-xs font-medium truncate ${
+        isCurrentUser ? 'text-green-900' : 'text-blue-900'
+      }`}>
         {employee.full_name}
+        {isCurrentUser && <span className="ml-1 text-green-600">(You)</span>}
       </div>
-      <div className="text-xs text-blue-700">
+      <div className={`text-xs ${
+        isCurrentUser ? 'text-green-700' : 'text-blue-700'
+      }`}>
         {employee.role?.name}
       </div>
       

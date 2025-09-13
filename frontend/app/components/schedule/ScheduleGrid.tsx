@@ -18,6 +18,7 @@ interface ScheduleGridProps {
     createShift: boolean;
     saveSchedule: boolean;
   };
+  currentUserId?: string; // ID of current user for highlighting
 }
 
 export default function ScheduleGrid({ 
@@ -31,7 +32,8 @@ export default function ScheduleGrid({
   onCreateShift,
   existingShifts = [],
   pendingOperations = new Set(),
-  mutationStatus
+  mutationStatus,
+  currentUserId
 }: ScheduleGridProps) {
   const formatDate = (dateString: string) => {
     const date = new Date(dateString);
@@ -50,9 +52,16 @@ export default function ScheduleGrid({
     <div className="bg-white rounded-lg shadow-sm border overflow-hidden">
       <div className="px-6 py-4 border-b border-gray-200">
         <div className="flex items-center justify-between">
-          <h2 className="text-xl font-semibold text-gray-900">
-            {selectedShiftDate ? `Schedule - Selected: ${formatDate(selectedShiftDate).day}, ${formatDate(selectedShiftDate).month} ${formatDate(selectedShiftDate).date}` : 'Schedule Grid'}
-          </h2>
+          <div className="flex items-center space-x-3">
+            <h2 className="text-xl font-semibold text-gray-900">
+              {selectedShiftDate ? `Schedule - Selected: ${formatDate(selectedShiftDate).day}, ${formatDate(selectedShiftDate).month} ${formatDate(selectedShiftDate).date}` : 'Schedule Grid'}
+            </h2>
+            {!canEdit && (
+              <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800">
+                Read-only
+              </span>
+            )}
+          </div>
           <div className="text-sm text-gray-600">
             Overall Completion: <span className="font-medium">{scheduleWeek.overallCompletion}%</span>
             {mutationStatus && (mutationStatus.assignEmployee || mutationStatus.createShift || mutationStatus.saveSchedule) && (
@@ -154,6 +163,7 @@ export default function ScheduleGrid({
                               onRemove={() => onAssignEmployee(empSchedule.employee_id, day.date)}
                               canEdit={canEdit && (!selectedShiftDate || isSelected)}
                               isSaving={pendingOperations.has(`${empSchedule.employee_id}-${day.date}`)}
+                              isCurrentUser={currentUserId === empSchedule.employee_id}
                             />
                           ))}
                         

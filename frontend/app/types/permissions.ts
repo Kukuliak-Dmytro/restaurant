@@ -3,6 +3,7 @@ interface UserPermissions {
   canEditSchedules: boolean;
   canDeleteSchedules: boolean;
   canCreateSchedules: boolean;
+  canManageIngredients: boolean;
   isAdmin: boolean;
   roleId: number;
   roleName: string;
@@ -23,6 +24,7 @@ const getPermissionsByRole = (roleId: number): UserPermissions => {
     canEditSchedules: isAdmin,
     canDeleteSchedules: isAdmin,
     canCreateSchedules: isAdmin,
+    canManageIngredients: isAdmin,
     isAdmin,
     roleId,
     roleName: isAdmin ? 'Admin' : 'Employee'

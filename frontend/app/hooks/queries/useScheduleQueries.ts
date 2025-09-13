@@ -101,12 +101,54 @@ export const useLocationsQuery = () => {
   return useQuery({
     queryKey: [...scheduleKeys.all, 'locations'],
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from('locations')
-        .select('*');
+      try {
+        console.log('Fetching locations from restaurant_locations table...');
+        const { data, error } = await supabase
+          .from('restaurant_locations')
+          .select('*');
 
-      if (error) throw error;
-      return data || [];
+        if (error) {
+          console.error('Error fetching locations:', error);
+          
+          // If RLS blocks access, try to get user's location from their profile
+          console.log('Trying to get user location from profile...');
+          const { data: { user } } = await supabase.auth.getUser();
+          if (user) {
+            const { data: employee, error: employeeError } = await supabase
+              .from('employees')
+              .select(`
+                location_id,
+                restaurant_locations:location_id (
+                  id,
+                  address,
+                  employees_count,
+                  budget,
+                  start_construction,
+                  finish_construction
+                )
+              `)
+              .eq('email', user.email)
+              .single();
+            
+            if (employeeError) {
+              console.error('Error fetching employee location:', employeeError);
+              return [];
+            }
+            
+            if (employee?.restaurant_locations) {
+              console.log('Found user location:', employee.restaurant_locations);
+              return [employee.restaurant_locations];
+            }
+          }
+          return [];
+        }
+        
+        console.log('Successfully fetched locations:', data);
+        return data || [];
+      } catch (err) {
+        console.error('Failed to fetch locations:', err);
+        return [];
+      }
     },
     staleTime: 60 * 60 * 1000, // 1 hour - locations change very rarely
   });

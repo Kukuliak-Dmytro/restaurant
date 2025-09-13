@@ -17,7 +17,6 @@ export interface Shift {
 
 export interface ShiftRequest {
   shift_date: string;
-  profit?: number;
   started_at?: string;
   admin_id?: string;
 }

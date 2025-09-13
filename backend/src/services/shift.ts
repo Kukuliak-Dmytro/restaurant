@@ -1,14 +1,24 @@
 import supabase from '../utils/supabase';
+import { createClient } from '@supabase/supabase-js';
 import { Shift, ShiftRequest, ShiftResponse } from '../types/schedule';
 
 export class ShiftService {
-    async createShift(shiftData: ShiftRequest): Promise<ShiftResponse> {
+    async createShift(shiftData: ShiftRequest, userToken?: string): Promise<ShiftResponse> {
         try {
-            const { data, error } = await supabase
+            // Use user token if provided, otherwise use default supabase client
+            const client = userToken ? 
+                createClient(process.env.SUPABASE_URL || '', process.env.PUBLISH_KEY || '', {
+                    global: {
+                        headers: {
+                            Authorization: `Bearer ${userToken}`
+                        }
+                    }
+                }) : supabase;
+
+            const { data, error } = await client
                 .from('shifts')
                 .insert([{
                     shift_date: shiftData.shift_date,
-                    profit: shiftData.profit || 0,
                     started_at: shiftData.started_at || new Date().toISOString(),
                     admin_id: shiftData.admin_id
                 }])

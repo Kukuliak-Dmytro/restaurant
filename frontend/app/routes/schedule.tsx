@@ -22,8 +22,10 @@ import ShiftManager from '../components/schedule/ShiftManager';
 import type { ScheduleDay, EmployeeSchedule, ScheduleWeek } from '../types/schedule';
 
 export default function ScheduleCreator() {
-  const { permissions, loading: permissionsLoading } = usePermissions();
+  const { permissions, currentUser, loading: permissionsLoading } = usePermissions();
   const [selectedLocation, setSelectedLocation] = useState<number>(1);
+  
+  
   const [selectedWeek, setSelectedWeek] = useState<{ start: string; end: string }>(() => {
     const today = new Date();
     const startOfWeek = new Date(today);
@@ -60,6 +62,49 @@ export default function ScheduleCreator() {
   const { 
     data: locations = [] 
   } = useLocationsQuery();
+
+  // Auto-select user's location when currentUser is loaded (for all users including admins)
+  useEffect(() => {
+    if (currentUser?.location_id && locations.length > 0) {
+      const userLocation = locations.find(loc => loc.id === currentUser.location_id);
+      if (userLocation) {
+        setSelectedLocation(currentUser.location_id);
+        console.log('Auto-selected user location:', userLocation);
+      } else {
+        console.warn('User location not found in available locations:', {
+          userLocationId: currentUser.location_id,
+          availableLocations: locations.map(loc => ({ id: loc.id, address: loc.address }))
+        });
+      }
+    }
+  }, [currentUser, locations]);
+  
+  // If user doesn't have a location and is not admin, show warning
+  useEffect(() => {
+    if (currentUser && !currentUser.location_id && !permissions?.isAdmin) {
+      console.warn('User does not have a location assigned:', currentUser);
+    }
+  }, [currentUser, permissions?.isAdmin]);
+  
+  // Debug current user data
+  useEffect(() => {
+    if (currentUser) {
+      console.log('Schedule debug - currentUser:', {
+        id: currentUser.id,
+        full_name: currentUser.full_name,
+        location_id: currentUser.location_id,
+        role_id: currentUser.role_id,
+        role: currentUser.role
+      });
+    }
+  }, [currentUser]);
+  
+  // Debug locations data
+  useEffect(() => {
+    if (locations.length > 0) {
+      console.log('Schedule debug - locations:', locations.map(loc => ({ id: loc.id, address: loc.address })));
+    }
+  }, [locations]);
 
   // Mutations
   const assignEmployeeMutation = useAssignEmployeeMutation();
@@ -148,7 +193,35 @@ export default function ScheduleCreator() {
   }
 
   if (!permissions?.canViewSchedules) {
-    return <AccessDenied />;
+    return (
+      <div className="min-h-screen bg-gray-50 p-4">
+        <div className="max-w-4xl mx-auto">
+          <div className="bg-white rounded-lg shadow-sm border p-8 text-center">
+            <div className="mb-6">
+              <svg className="mx-auto h-16 w-16 text-yellow-500 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.732 16.5c-.77.833.192 2.5 1.732 2.5z" />
+              </svg>
+              <h2 className="text-2xl font-bold text-gray-900 mb-2">Profile Setup Required</h2>
+              <p className="text-gray-600 mb-6">
+                You need to complete your employee profile before accessing the schedule.
+              </p>
+            </div>
+            
+            <div className="space-y-4">
+              <a 
+                href="/profile" 
+                className="inline-block bg-blue-600 text-white px-6 py-3 rounded-lg hover:bg-blue-700 transition-colors"
+              >
+                Complete Your Profile
+              </a>
+              <div className="text-sm text-gray-500">
+                Make sure to fill in your role and location information
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
   }
 
   if (scheduleLoading || employeesLoading || rolesLoading) {
@@ -170,11 +243,33 @@ export default function ScheduleCreator() {
     <div className="min-h-screen bg-gray-50 p-4">
       <div className="max-w-7xl mx-auto">
         <div className="mb-6">
-          <h1 className="text-3xl font-bold text-gray-900 mb-2">Schedule Creator</h1>
-          <p className="text-gray-600">
-            {permissions.isAdmin ? 'Manage employee schedules' : 'View employee schedules'}
-          </p>
+          <div className="flex items-center justify-between">
+            <div>
+              <h1 className="text-3xl font-bold text-gray-900 mb-2">Schedule Creator</h1>
+              <p className="text-gray-600">
+                {permissions.isAdmin ? 'Manage employee schedules' : 'View employee schedules'}
+              </p>
+            </div>
+            {currentUser && (
+              <div className="text-right">
+                <div className="text-sm text-gray-600">Logged in as:</div>
+                <div className="font-medium text-gray-900">{currentUser.full_name}</div>
+                <div className="text-sm text-gray-500">{currentUser.role?.name}</div>
+                {currentUser.location_id && (
+                  <div className="text-xs text-blue-600 mt-1">
+                    📍 {locations.find(loc => loc.id === currentUser.location_id)?.address || `Location ID: ${currentUser.location_id}`}
+                  </div>
+                )}
+                {!currentUser.location_id && !permissions?.isAdmin && (
+                  <div className="text-xs text-yellow-600 mt-1">
+                    ⚠️ No location assigned
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
         </div>
+
 
         <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
           {/* Controls Panel */}
@@ -184,6 +279,8 @@ export default function ScheduleCreator() {
               selectedLocation={selectedLocation}
               onLocationChange={setSelectedLocation}
               loading={employeesLoading}
+              currentUserLocationId={currentUser?.location_id}
+              canEdit={permissions.canEditSchedules}
             />
             
             <WeekSelector
@@ -196,15 +293,28 @@ export default function ScheduleCreator() {
               endDate={selectedWeek.end}
               onShiftSelect={setSelectedShiftDate}
               selectedShiftDate={selectedShiftDate}
+              canEdit={permissions.canEditSchedules}
             />
 
-            {permissions.canEditSchedules && (
+            {permissions.canEditSchedules ? (
               <ScheduleActions
                 onSave={handleSaveSchedule}
                 isSaving={saveScheduleMutation.isPending}
                 saveError={saveError}
-                scheduleWeek={scheduleWeek}
+                scheduleWeek={scheduleWeek || null}
               />
+            ) : (
+              <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
+                <div className="flex items-center">
+                  <svg className="w-5 h-5 text-yellow-600 mr-2" fill="currentColor" viewBox="0 0 20 20">
+                    <path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+                  </svg>
+                  <div>
+                    <div className="text-sm font-medium text-yellow-800">Read-only Mode</div>
+                    <div className="text-xs text-yellow-600">You can view schedules but cannot make changes</div>
+                  </div>
+                </div>
+              </div>
             )}
           </div>
 
@@ -245,6 +355,7 @@ export default function ScheduleCreator() {
                   onCreateShift={handleCreateShift}
                   existingShifts={existingShifts}
                   pendingOperations={new Set()} // TanStack Query handles this automatically
+                  currentUserId={currentUser?.id}
                 />
               </div>
             ) : null}

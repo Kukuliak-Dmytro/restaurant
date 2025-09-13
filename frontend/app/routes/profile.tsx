@@ -167,6 +167,11 @@ export default function Profile() {
       errors.push('Full name is required');
     }
     
+    // Role is required only when creating a new profile
+    if (!currentEmployeeId && !employee.role_id) {
+      errors.push('Role is required when creating a profile');
+    }
+    
     if (employee.age !== null && (employee.age < 0 || employee.age > 150)) {
       errors.push('Age must be between 0 and 150');
     }
@@ -203,7 +208,7 @@ export default function Profile() {
       }
 
       if (currentEmployeeId) {
-        // Update existing employee
+        // Update existing employee (excluding role_id as it cannot be changed)
         const { data, error } = await supabase
           .from('employees')
           .update({
@@ -211,7 +216,6 @@ export default function Profile() {
             age: employee.age,
             email: employee.email,
             is_featured: employee.is_featured,
-            role_id: employee.role_id,
             location_id: employee.location_id,
             updated_at: new Date().toISOString(),
           })
@@ -300,7 +304,17 @@ export default function Profile() {
   return (
     <div className="min-h-screen bg-gray-50 py-8">
       <div className="max-w-2xl mx-auto px-4">
-        <h1 className="text-3xl font-bold text-gray-900 mb-8">Employee Profile</h1>
+        <div className="text-center mb-8">
+          <h1 className="text-3xl font-bold text-gray-900 mb-2">
+            {currentEmployeeId ? '✏️ Edit Profile' : '➕ Create Profile'}
+          </h1>
+          <p className="text-gray-600">
+            {currentEmployeeId 
+              ? 'Update your personal information (role cannot be changed)' 
+              : 'Complete your employee profile to get started'
+            }
+          </p>
+        </div>
         
         {message && (
           <div className={`mb-6 p-4 rounded-md ${
@@ -309,6 +323,26 @@ export default function Profile() {
               : 'bg-red-50 text-red-800 border border-red-200'
           }`}>
             {message.text}
+          </div>
+        )}
+
+        {currentEmployeeId && (
+          <div className="mb-6 p-4 bg-blue-50 border border-blue-200 rounded-lg">
+            <div className="flex items-start">
+              <div className="flex-shrink-0">
+                <svg className="h-5 w-5 text-blue-400" fill="currentColor" viewBox="0 0 20 20">
+                  <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clipRule="evenodd" />
+                </svg>
+              </div>
+              <div className="ml-3">
+                <h3 className="text-sm font-medium text-blue-800">
+                  Role Information
+                </h3>
+                <div className="mt-2 text-sm text-blue-700">
+                  <p>Your role has been set and cannot be changed after profile creation. If you need to change your role, please contact your administrator.</p>
+                </div>
+              </div>
+            </div>
           </div>
         )}
 
@@ -368,22 +402,34 @@ export default function Profile() {
             {/* Role */}
             <div>
               <label htmlFor="role_id" className="block text-sm font-medium text-gray-700 mb-2">
-                Role
+                Role {currentEmployeeId && <span className="text-gray-500 text-sm">(Cannot be changed after profile creation)</span>}
               </label>
-              <select
-                id="role_id"
-                name="role_id"
-                value={employee.role_id || ''}
-                onChange={handleInputChange}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md bg-white text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-              >
-                <option value="">Select a role</option>
-                {roles.map(role => (
-                  <option key={role.id} value={role.id}>
-                    {role.name}
-                  </option>
-                ))}
-              </select>
+              {currentEmployeeId ? (
+                // Show current role as read-only when editing existing profile
+                <div className="w-full px-3 py-2 border border-gray-300 rounded-md bg-gray-50 text-gray-700 flex items-center">
+                  <span className="text-lg mr-2">👤</span>
+                  <span className="font-medium">
+                    {employee.role_id ? roles.find(role => role.id === employee.role_id)?.name || 'Unknown Role' : 'No role selected'}
+                  </span>
+                </div>
+              ) : (
+                // Allow role selection only when creating new profile
+                <select
+                  id="role_id"
+                  name="role_id"
+                  value={employee.role_id || ''}
+                  onChange={handleInputChange}
+                  required
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md bg-white text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                >
+                  <option value="">Select a role *</option>
+                  {roles.map(role => (
+                    <option key={role.id} value={role.id}>
+                      {role.name}
+                    </option>
+                  ))}
+                </select>
+              )}
             </div>
 
             {/* Location */}
@@ -423,17 +469,31 @@ export default function Profile() {
             </div>
 
             {/* Submit Button */}
-            <div className="pt-4">
+            <div className="pt-6">
               <button
                 type="submit"
                 disabled={loading}
-                className={`w-full py-2 px-4 rounded-md text-white font-medium ${
+                className={`w-full py-3 px-6 rounded-lg text-white font-semibold transition-all duration-200 ${
                   loading
                     ? 'bg-gray-400 cursor-not-allowed'
-                    : 'bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2'
+                    : currentEmployeeId 
+                      ? 'bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 shadow-md hover:shadow-lg'
+                      : 'bg-gradient-to-r from-green-600 to-green-700 hover:from-green-700 hover:to-green-800 shadow-md hover:shadow-lg'
                 }`}
               >
-                {loading ? 'Updating...' : currentEmployeeId ? 'Update Profile' : 'Create Profile'}
+                {loading ? (
+                  <span className="flex items-center justify-center">
+                    <svg className="animate-spin -ml-1 mr-3 h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                    </svg>
+                    {currentEmployeeId ? 'Updating...' : 'Creating...'}
+                  </span>
+                ) : (
+                  <span className="flex items-center justify-center">
+                    {currentEmployeeId ? '✏️ Update Profile' : '➕ Create Profile'}
+                  </span>
+                )}
               </button>
             </div>
           </div>

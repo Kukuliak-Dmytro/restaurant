@@ -2,9 +2,11 @@ import { useState, useEffect } from 'react';
 import { supabase } from '../lib/supabase';
 import type { UserPermissions } from '../types/permissions';
 import { getPermissionsByRole, ADMIN_ROLE_ID } from '../types/permissions';
+import type { Employee } from '../types/schedule';
 
 export const usePermissions = () => {
   const [permissions, setPermissions] = useState<UserPermissions | null>(null);
+  const [currentUser, setCurrentUser] = useState<Employee | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -31,6 +33,7 @@ export const usePermissions = () => {
             canEditSchedules: false,
             canDeleteSchedules: false,
             canCreateSchedules: false,
+            canManageIngredients: false,
             isAdmin: false,
             roleId: 0,
             roleName: 'Guest'
@@ -44,7 +47,11 @@ export const usePermissions = () => {
         const { data: employee, error: employeeError } = await supabase
           .from('employees')
           .select(`
+            id,
+            full_name,
+            email,
             role_id,
+            location_id,
             role:role_id (
               id,
               name,
@@ -58,17 +65,42 @@ export const usePermissions = () => {
           hasEmployee: !!employee,
           roleId: employee?.role_id,
           roleName: employee?.role?.name,
+          locationId: employee?.location_id,
           error: employeeError?.message || 'None'
         });
 
-        if (employeeError || !employee) {
-          console.log('🔐 [usePermissions] Employee record not found, setting no permissions');
-          setError('Employee record not found');
+        if (employeeError) {
+          console.log('🔐 [usePermissions] Error fetching employee record:', employeeError);
+          
+          // Check if it's a "not found" error
+          if (employeeError.code === 'PGRST116') {
+            setError('Employee profile not found - please complete your profile');
+          } else {
+            setError('Failed to fetch employee record: ' + employeeError.message);
+          }
+          
           setPermissions({
             canViewSchedules: false,
             canEditSchedules: false,
             canDeleteSchedules: false,
             canCreateSchedules: false,
+            canManageIngredients: false,
+            isAdmin: false,
+            roleId: 0,
+            roleName: 'Unknown'
+          });
+          return;
+        }
+
+        if (!employee) {
+          console.log('🔐 [usePermissions] Employee record not found for email:', session.user.email);
+          setError('Employee record not found - please complete your profile');
+          setPermissions({
+            canViewSchedules: false,
+            canEditSchedules: false,
+            canDeleteSchedules: false,
+            canCreateSchedules: false,
+            canManageIngredients: false,
             isAdmin: false,
             roleId: 0,
             roleName: 'Unknown'
@@ -98,6 +130,8 @@ export const usePermissions = () => {
           roleName
         });
         
+        setCurrentUser(employee as Employee);
+        
       } catch (err) {
         console.error('🔐 [usePermissions] Error fetching permissions:', err);
         setError('Failed to fetch permissions');
@@ -118,5 +152,5 @@ export const usePermissions = () => {
     return () => subscription.unsubscribe();
   }, []);
 
-  return { permissions, loading, error };
+  return { permissions, currentUser, loading, error };
 };
